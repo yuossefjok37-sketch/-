@@ -1,0 +1,198 @@
+{
+  "entities": {
+    "ActivationCode": {
+      "title": "Activation Code",
+      "description": "An activation code for an application installation",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Unique activation code string",
+          "maxLength": 64
+        },
+        "batchId": {
+          "type": "string",
+          "description": "Batch identification for bulk generated codes",
+          "maxLength": 64
+        },
+        "durationDays": {
+          "type": "number",
+          "description": "Duration in days granted once activated"
+        },
+        "durationLabel": {
+          "type": "string",
+          "description": "Human readable Arabic duration label",
+          "maxLength": 50
+        },
+        "status": {
+          "type": "string",
+          "description": "Code status: active, bound, expired, suspended",
+          "enum": ["active", "bound", "expired", "suspended"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of code creation"
+        },
+        "firstActivatedAt": {
+          "type": "string",
+          "description": "ISO timestamp when first successfully activated"
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "ISO timestamp when subscription will expire or expired"
+        },
+        "deviceToken": {
+          "type": "string",
+          "description": "Cryptographic installation token of the bound device",
+          "maxLength": 256
+        },
+        "deviceModel": {
+          "type": "string",
+          "description": "Client hardware or model name",
+          "maxLength": 128
+        },
+        "deviceOs": {
+          "type": "string",
+          "description": "Operating system version",
+          "maxLength": 64
+        },
+        "appVersion": {
+          "type": "string",
+          "description": "Android application version",
+          "maxLength": 32
+        },
+        "lastVerifiedAt": {
+          "type": "string",
+          "description": "Last heartbeat or verification timestamp"
+        },
+        "note": {
+          "type": "string",
+          "description": "Admin notes or customer name",
+          "maxLength": 500
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Email or UID of admin who created the code",
+          "maxLength": 128
+        }
+      },
+      "required": ["code", "durationDays", "status", "createdAt"]
+    },
+    "AdminUser": {
+      "title": "Admin User",
+      "description": "Administrator account allowed to access the dashboard",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Email address of the administrator",
+          "maxLength": 128
+        },
+        "role": {
+          "type": "string",
+          "description": "Role level",
+          "enum": ["admin", "superadmin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["email", "role"]
+    },
+    "ActivityLog": {
+      "title": "Activity Log",
+      "description": "Audit trail log of code actions",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Action name performed",
+          "maxLength": 64
+        },
+        "code": {
+          "type": "string",
+          "description": "Target activation code",
+          "maxLength": 64
+        },
+        "deviceToken": {
+          "type": "string",
+          "description": "Target device installation token",
+          "maxLength": 256
+        },
+        "performedBy": {
+          "type": "string",
+          "description": "Actor who initiated the action",
+          "maxLength": 128
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp of event"
+        },
+        "details": {
+          "type": "string",
+          "description": "Arabic description of event details",
+          "maxLength": 500
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "Client IP address if available",
+          "maxLength": 128
+        }
+      },
+      "required": ["action", "timestamp", "performedBy"]
+    },
+    "SystemSettings": {
+      "title": "System Settings",
+      "description": "Global backend and API configuration",
+      "type": "object",
+      "properties": {
+        "apiKey": {
+          "type": "string",
+          "description": "Server API key for Android application authentication",
+          "maxLength": 128
+        },
+        "appName": {
+          "type": "string",
+          "description": "Target Android app title",
+          "maxLength": 100
+        },
+        "allowNewActivations": {
+          "type": "boolean",
+          "description": "Master switch to enable or disable new activations"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["apiKey", "appName"]
+    }
+  },
+  "firestore": {
+    "/codes/{codeId}": {
+      "schema": {
+        "$ref": "#/entities/ActivationCode"
+      },
+      "description": "Collection of all activation codes managed by the system"
+    },
+    "/admins/{adminUid}": {
+      "schema": {
+        "$ref": "#/entities/AdminUser"
+      },
+      "description": "Collection of verified dashboard administrators"
+    },
+    "/activityLogs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/ActivityLog"
+      },
+      "description": "Comprehensive audit log of activations, checks and admin modifications"
+    },
+    "/systemSettings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/SystemSettings"
+      },
+      "description": "Global system configurations including API key and activation policies"
+    }
+  }
+}

@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedEmail() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrapAdmin() {
+      return isVerifiedEmail() &&
+        'email' in request.auth.token &&
+        request.auth.token.email is string &&
+        request.auth.token.email.lower() == 'yuossefjok37@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() || (
+        isVerifiedEmail() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Activation Code Validator
+    function isValidActivationCode(data) {
+      return data.keys().hasAll(['code', 'durationDays', 'status', 'createdAt']) &&
+        data.keys().hasOnly(['code', 'durationDays', 'durationLabel', 'status', 'createdAt', 'firstActivatedAt', 'expiresAt', 'deviceToken', 'deviceModel', 'deviceOs', 'appVersion', 'lastVerifiedAt', 'note', 'createdBy', 'batchId']) &&
+        data.code is string && data.code.size() >= 4 && data.code.size() <= 64 &&
+        data.durationDays is number && data.durationDays > 0 && data.durationDays <= 3650 &&
+        data.status is string && data.status in ['active', 'bound', 'expired', 'suspended'] &&
+        data.createdAt is string && data.createdAt.size() <= 50 &&
+        (!('durationLabel' in data) || data.durationLabel == null || (data.durationLabel is string && data.durationLabel.size() <= 50)) &&
+        (!('firstActivatedAt' in data) || data.firstActivatedAt == null || (data.firstActivatedAt is string && data.firstActivatedAt.size() <= 50)) &&
+        (!('expiresAt' in data) || data.expiresAt == null || (data.expiresAt is string && data.expiresAt.size() <= 50)) &&
+        (!('deviceToken' in data) || data.deviceToken == null || (data.deviceToken is string && data.deviceToken.size() <= 256)) &&
+        (!('deviceModel' in data) || data.deviceModel == null || (data.deviceModel is string && data.deviceModel.size() <= 128)) &&
+        (!('deviceOs' in data) || data.deviceOs == null || (data.deviceOs is string && data.deviceOs.size() <= 64)) &&
+        (!('appVersion' in data) || data.appVersion == null || (data.appVersion is string && data.appVersion.size() <= 32)) &&
+        (!('lastVerifiedAt' in data) || data.lastVerifiedAt == null || (data.lastVerifiedAt is string && data.lastVerifiedAt.size() <= 50)) &&
+        (!('note' in data) || data.note == null || (data.note is string && data.note.size() <= 500)) &&
+        (!('batchId' in data) || data.batchId == null || (data.batchId is string && data.batchId.size() <= 64)) &&
+        (!('createdBy' in data) || data.createdBy == null || (data.createdBy is string && data.createdBy.size() <= 128));
+    }
+
+    // Activity Log Validator
+    function isValidActivityLog(data) {
+      return data.keys().hasAll(['action', 'timestamp', 'performedBy']) &&
+        data.keys().hasOnly(['action', 'code', 'deviceToken', 'performedBy', 'timestamp', 'details', 'ipAddress']) &&
+        data.action is string && data.action.size() > 0 && data.action.size() <= 64 &&
+        data.performedBy is string && data.performedBy.size() > 0 && data.performedBy.size() <= 128 &&
+        data.timestamp is string && data.timestamp.size() > 0 && data.timestamp.size() <= 50 &&
+        (!('code' in data) || data.code == null || (data.code is string && data.code.size() <= 64)) &&
+        (!('deviceToken' in data) || data.deviceToken == null || (data.deviceToken is string && data.deviceToken.size() <= 256)) &&
+        (!('details' in data) || data.details == null || (data.details is string && data.details.size() <= 500)) &&
+        (!('ipAddress' in data) || data.ipAddress == null || (data.ipAddress is string && data.ipAddress.size() <= 128));
+    }
+
+    // Admin User Validator
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['email', 'role']) &&
+        data.keys().hasOnly(['email', 'role', 'createdAt']) &&
+        data.email is string && data.email.size() > 0 && data.email.size() <= 128 &&
+        data.role is string && data.role in ['admin', 'superadmin'] &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
+    }
+
+    // System Settings Validator
+    function isValidSystemSettings(data) {
+      return data.keys().hasAll(['apiKey', 'appName']) &&
+        data.keys().hasOnly(['apiKey', 'appName', 'allowNewActivations', 'updatedAt']) &&
+        data.apiKey is string && data.apiKey.size() > 0 && data.apiKey.size() <= 128 &&
+        data.appName is string && data.appName.size() > 0 && data.appName.size() <= 100 &&
+        (!('allowNewActivations' in data) || data.allowNewActivations is bool) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50));
+    }
+
+    // Admins collection: only admins can manage or inspect
+    match /admins/{adminUid} {
+      allow get: if isVerifiedEmail() && (request.auth.uid == adminUid || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isAdmin() && isValidId(adminUid) && isValidAdminUser(incoming());
+      allow delete: if isAdmin() && isValidId(adminUid);
+    }
+
+    // Codes collection: accessible only to verified authenticated admins
+    // Direct client access by unauthenticated users or normal users is blocked.
+    match /codes/{codeId} {
+      allow get: if isAdmin() && isValidId(codeId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(codeId) && isValidActivationCode(incoming());
+      allow update: if isAdmin() && isValidId(codeId) && isValidActivationCode(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(codeId);
+    }
+
+    // Activity Logs: only readable and creatable by admins
+    match /activityLogs/{logId} {
+      allow get: if isAdmin() && isValidId(logId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(logId) && isValidActivityLog(incoming());
+      allow update, delete: if false; // Logs are immutable audit trails
+    }
+
+    // System Settings: only readable and writable by admins
+    match /systemSettings/{settingId} {
+      allow get, list: if isAdmin();
+      allow create, update: if isAdmin() && isValidId(settingId) && isValidSystemSettings(incoming());
+      allow delete: if false;
+    }
+  }
+}

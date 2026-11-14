@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: activation-codes-manager
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node server.ts
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production

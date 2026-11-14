@@ -1,0 +1,6 @@
+{
+  "name": "Activation Codes Manager",
+  "description": "لوحة تحكم سحابية متقدمة وآمنة لإدارة وتوليد وتتبع أكواد تفعيل التطبيقات مع واجهات API موثقة للربط بتطبيقات Android.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
