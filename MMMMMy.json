@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: activation-codes-manager
+    runtime: node
+    buildCommand: npm install
+    startCommand: npx ts-node server.ts
+    envVars:
+      - key: PORT
+        value: 10000
